@@ -1,38 +1,36 @@
 # VALORANT RACE
 
-Aplicação web React/Vite com API Node/Express. O painel, avaliações e objetivos são lidos de um armazenamento no servidor, então todos os visitantes veem os mesmos resultados. A administração exige senha e a API valida a sessão no backend.
+Página pública e somente para leitura no GitHub Pages. O placar, objetivos e histórico são carregados de `public/data/competition.json`, um arquivo versionado no próprio repositório. Não há serviço pago nem banco hospedado.
 
-## Rodar localmente
+## Como o Dudu publica uma atualização
 
-1. Copie `.env.example` para `.env` e altere `ADMIN_PASSWORD` e `SESSION_SECRET`.
-2. Execute:
+A atualização é feita no painel local. O site público não mostra controles administrativos.
+
+1. Clone/puxe a branch `main` no computador do Dudu.
+2. Na primeira vez, crie o arquivo local `.env` a partir de `.env.example` e escolha `ADMIN_PASSWORD` e `SESSION_SECRET`. Nunca envie `.env` ao GitHub.
+3. No diretório do projeto, rode uma vez `npm.cmd install` e, nas sessões de edição, `npm.cmd run dev`.
+4. Acesse `http://localhost:5173/`, entre em Administração e salve avaliações ou objetivos. O servidor local grava as mudanças em `public/data/competition.json`.
+5. Faça commit e push desse JSON para `main` (pelo GitHub Desktop ou Git):
 
 ```powershell
-npm.cmd install
-npm.cmd run dev
+git add public/data/competition.json
+git commit -m "Atualiza dados da competição"
+git push origin main
 ```
 
-O comando local inicia Vite e API para desenvolvimento. A hospedagem pública usa Render e não depende do computador do organizador.
+O GitHub Actions compila e publica a nova versão. Os visitantes só abrem o site; não precisam de Node.js, terminal ou servidor local. A atualização aparece depois que o workflow terminar.
 
-## Publicar no Render
+## Configurar o GitHub Pages
 
-1. Coloque a pasta do projeto em um repositório GitHub privado. O `.gitignore` exclui `.env`, dependências e dados locais.
-2. No Render, crie um **Blueprint** a partir do repositório e use o arquivo `render.yaml`.
-3. Informe um valor forte para `ADMIN_PASSWORD` quando o Render solicitar. O Blueprint cria um `SESSION_SECRET` e um disco persistente de 1 GB.
-4. Após o deploy, abra a URL `*.onrender.com` criada pelo Render. O serviço faz build de `dist`, serve o site e executa a API no mesmo domínio.
+No repositório, abra **Settings → Pages → Build and deployment** e escolha **GitHub Actions** como fonte. A URL padrão do projeto é `https://diogo2624.github.io/VALO-RACE/`.
 
-O plano `starter` mantém o serviço ativo sem suspensão por inatividade. O custo de referência é US$ 7/mês pelo serviço mais US$ 0,25/GB/mês do disco de 1 GB (aproximadamente US$ 7,25/mês, antes de uso excedente e impostos; confirme os valores no painel do Render). O plano grátis não atende ao requisito de disponibilidade contínua: ele suspende o serviço depois de 15 minutos sem tráfego, e o sistema de arquivos é temporário.
+## Acesso e privacidade
 
-## Persistência e limites
+O repositório é público, então `public/data/competition.json` e seu histórico de commits também são públicos. Qualquer pessoa pode ler os resultados; somente colaboradores com permissão de escrita no GitHub podem enviar atualizações para `main`. O site publicado não recebe gravações do navegador.
 
-Os dados compartilhados do torneio são salvos em `DATA_DIR/objectives.json`; no Render, o disco persistente é montado em `/var/data`. Faça backups desse arquivo antes de mudanças importantes. O projeto usa armazenamento JSON e uma instância única, adequado para este grupo pequeno; se houver crescimento ou necessidade de alta disponibilidade, migre para PostgreSQL.
+## Arquivos principais
 
-A autenticação está ativa para salvar objetivos e avaliações. O administrador usa uma senha única definida como variável de ambiente; nunca a coloque no frontend ou em repositório. A disponibilidade contínua de um serviço não equivale a uma garantia de 100% de uptime.
-
-## Estrutura
-
-- `src/App.jsx`: interface, ranking, perfis, avaliação e administração.
-- `src/data.js`: dados iniciais.
-- `src/styles.css`: visual responsivo.
-- `server/index.js`: API, autenticação e persistência.
-- `render.yaml`: configuração de implantação e disco persistente.
+- `src/App.jsx`: painel público e formulário de administração local.
+- `public/data/competition.json`: fonte versionada dos dados compartilhados.
+- `server/index.js`: serviço local autenticado que edita o JSON.
+- `.github/workflows/pages.yml`: build e publicação automática do Pages após push em `main`.

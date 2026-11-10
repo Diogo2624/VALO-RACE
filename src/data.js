@@ -23,14 +23,6 @@ export const INITIAL_DATA = {
     jao: ['Criar espaço para o time', 'Converter vantagem numérica', 'Variar posição após abate', 'Sincronizar util no execute', 'Orientar rotação com antecedência']
   },
   evaluations: [],
-  redeemed: []
+  redeemed: [],
+  objectiveHistory: {}
 };
-
-export function loadData() {
-  try {
-    const saved = localStorage.getItem('valorant-race-v1');
-    if (!saved) return INITIAL_DATA;
-    const parsed = JSON.parse(saved);
-    return { ...INITIAL_DATA, ...parsed, players: (parsed.players || INITIAL_DATA.players).map(player => player.id === 'jao' ? { ...player, name: 'Joãozin', avatar: 'JZ' } : player) };
-  } catch { return INITIAL_DATA; }
-}

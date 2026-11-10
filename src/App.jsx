@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, ArrowDownRight, ArrowUpRight, Award, BarChart3, ChevronRight, CircleHelp, Crosshair, Flag, Gamepad2, LayoutDashboard, Medal, Plus, Shield, SlidersHorizontal, Sparkles, Target, Trophy, Users, X } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { CATEGORIES, loadData } from './data';
+import { CATEGORIES, INITIAL_DATA } from './data';
 
 const fmt = n => new Intl.NumberFormat('pt-BR').format(n);
 const dateLabel = d => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 
 export default function App() {
-  const [data, setData] = useState(loadData);
+  const [data, setData] = useState(INITIAL_DATA);
   const [page, setPage] = useState('overview');
   const [selected, setSelected] = useState(null);
   const [modal, setModal] = useState(false);
@@ -16,23 +16,19 @@ export default function App() {
   const [adminAuthenticated, setAdminAuthenticated] = useState(false);
 
   useEffect(() => {
-    const sync = () => fetch('/api/data').then(response => response.ok ? response.json() : null).then(remote => {
+    const endpoint = import.meta.env.DEV ? '/api/data' : `${import.meta.env.BASE_URL}data/competition.json`;
+    const sync = () => fetch(endpoint).then(response => response.ok ? response.json() : null).then(remote => {
       if (!remote) return;
-      setData(current => {
-        const next = { ...current, ...remote };
-        localStorage.setItem('valorant-race-v1', JSON.stringify(next));
-        return next;
-      });
+      setData({ ...INITIAL_DATA, ...remote });
     }).catch(() => {});
     sync();
-    const timer = window.setInterval(sync, 30000);
-    fetch('/api/auth/me').then(response => response.json()).then(result => setAdminAuthenticated(result.authenticated)).catch(() => {});
-    return () => window.clearInterval(timer);
+    const timer = import.meta.env.DEV ? window.setInterval(sync, 30000) : null;
+    if (import.meta.env.DEV) fetch('/api/auth/me').then(response => response.json()).then(result => setAdminAuthenticated(result.authenticated)).catch(() => {});
+    return () => timer && window.clearInterval(timer);
   }, []);
 
   function update(next) {
     setData(next);
-    localStorage.setItem('valorant-race-v1', JSON.stringify(next));
   }
 
   const players = useMemo(() => data.players.map(p => {
@@ -95,17 +91,15 @@ export default function App() {
       <div className="nav-label">COMPETIÇÃO</div>
       <button className={`nav-item ${page === 'overview' ? 'active' : ''}`} onClick={() => { setPage('overview'); setSelected(null); }}><LayoutDashboard size={18}/> Painel geral</button>
       <button className={`nav-item ${page === 'players' ? 'active' : ''}`} onClick={() => { setPage('players'); setSelected(null); }}><Users size={18}/> Jogadores <span className="nav-count">04</span></button>
-      <button className="nav-item" onClick={openEvaluation}><BarChart3 size={18}/> Avaliações</button>
-      <div className="nav-label nav-label-gap">GERENCIAMENTO</div>
-      <button className={`nav-item ${page === 'admin' ? 'active' : ''}`} onClick={() => openObjectiveManager()}><Shield size={18}/> Administração</button>
+      {import.meta.env.DEV && <><button className="nav-item" onClick={openEvaluation}><BarChart3 size={18}/> Avaliações</button><div className="nav-label nav-label-gap">GERENCIAMENTO</div><button className={`nav-item ${page === 'admin' ? 'active' : ''}`} onClick={() => openObjectiveManager()}><Shield size={18}/> Administração</button></>}
       <div className="sidebar-bottom"><div className="season-card"><div className="season-icon"><Flag size={16}/></div><div><b>Temporada 01</b><small>Em andamento</small></div><span className="live-dot"/></div><div className="admin-row"><div className="admin-avatar">AD</div><div><b>Organizador</b><small>Administrador</small></div><SlidersHorizontal size={16} className="muted-icon"/></div></div>
     </aside>
 
     <main id="top" className="main-content">
       <header className="topbar"><div className="mobile-brand"><Crosshair size={19}/> VALORANT <b>RACE</b></div><div className="breadcrumb">Temporada 01 <ChevronRight size={14}/> <strong>{selected ? selected.name : page === 'players' ? 'Jogadores' : 'Painel geral'}</strong></div><div className="top-actions"><span className="status-pill"><i/> Temporada ativa</span><button className="icon-button" title="Ajuda"><CircleHelp size={18}/></button><div className="top-avatar">AD</div></div></header>
 
-      {selected ? <PlayerDetail player={selected} data={data} playerStats={players.find(p => p.id === selected.id)} onBack={() => setSelected(null)} onEvaluate={openEvaluation} onManage={() => openObjectiveManager(selected.id)} /> : page === 'admin' ? <AdminScreen data={data} initialPlayerId={adminPlayerId} onSave={saveObjectives} authenticated={adminAuthenticated} onLogin={loginAdmin} onLogout={logoutAdmin} onAddEvaluation={openEvaluation} /> : page === 'players' ? <section className="page-wrap"><PageHeading eyebrow="ELENCO DA TEMPORADA" title="Jogadores" subtitle="Acompanhe o desempenho e os objetivos individuais da equipe." action={<button className="button primary" onClick={openEvaluation}><Plus size={16}/> Adicionar avaliação</button>} /><div className="player-grid">{players.map((p, i) => <PlayerCard key={p.id} p={p} index={i} objectives={data.objectives[p.id] || []} onClick={() => setSelected(p)}/>)}</div></section> : <section className="page-wrap">
-        <PageHeading eyebrow="SEASON 01 · CORRIDA PELA EVOLUÇÃO" title={<>Cada round conta<span className="title-period">.</span></>} subtitle="Uma corrida para evoluir. Acompanhe o progresso de cada jogador e descubra quem está mais perto do próximo marco." action={<button className="button primary" onClick={() => setModal(true)}><Plus size={16}/> Adicionar avaliação</button>} />
+      {selected ? <PlayerDetail player={selected} data={data} playerStats={players.find(p => p.id === selected.id)} onBack={() => setSelected(null)} onEvaluate={import.meta.env.DEV ? openEvaluation : null} onManage={import.meta.env.DEV ? () => openObjectiveManager(selected.id) : null} /> : page === 'admin' && import.meta.env.DEV ? <AdminScreen data={data} initialPlayerId={adminPlayerId} onSave={saveObjectives} authenticated={adminAuthenticated} onLogin={loginAdmin} onLogout={logoutAdmin} onAddEvaluation={openEvaluation} /> : page === 'players' ? <section className="page-wrap"><PageHeading eyebrow="ELENCO DA TEMPORADA" title="Jogadores" subtitle="Acompanhe o desempenho e os objetivos individuais da equipe." action={import.meta.env.DEV && <button className="button primary" onClick={openEvaluation}><Plus size={16}/> Adicionar avaliação</button>} /><div className="player-grid">{players.map((p, i) => <PlayerCard key={p.id} p={p} index={i} objectives={data.objectives[p.id] || []} onClick={() => setSelected(p)}/>)}</div></section> : <section className="page-wrap">
+        <PageHeading eyebrow="SEASON 01 · CORRIDA PELA EVOLUÇÃO" title={<>Cada round conta<span className="title-period">.</span></>} subtitle="Uma corrida para evoluir. Acompanhe o progresso de cada jogador e descubra quem está mais perto do próximo marco." action={import.meta.env.DEV && <button className="button primary" onClick={openEvaluation}><Plus size={16}/> Adicionar avaliação</button>} />
         <div className="stats-grid">
           <StatCard label="LÍDER ATUAL" value={top?.name || '—'} detail={`${fmt(top?.score || 0)} pontos acumulados`} icon={<Trophy size={17}/>} accent="red" extra={top?.days ? <span className="trend"><ArrowUpRight size={14}/> na liderança</span> : <span className="subtle">Aguardando avaliações</span>}/>
           <StatCard label="PONTOS EM DISPUTA" value={fmt(players.reduce((s, p) => s + p.score, 0))} detail="somados por todo o time" icon={<Target size={17}/>} accent="blue" extra={<span className="stat-mini">{totalEvaluations} avaliações</span>}/>
@@ -155,7 +149,7 @@ function AdminObjectives({ data, initialPlayerId, onSave, onLogout, onAddEvaluat
   async function save() { setError(''); try { await onSave(playerId, draft.map(goal => goal.trim())); setSaved(true); } catch (err) { setError(err.message); } }
   return <section className="page-wrap"><div className="admin-page-heading"><PageHeading eyebrow="ÁREA DE ADMINISTRAÇÃO" title="Gerenciar objetivos" subtitle="Edite os cinco objetivos ativos de cada participante. As alterações são validadas e salvas no servidor."/><div className="admin-heading-buttons"><button className="button primary" onClick={onAddEvaluation}><Plus size={15}/> Nova avaliação</button><button className="button ghost" onClick={onLogout}>Sair</button></div></div><div className="admin-layout"><div className="panel objective-editor"><div className="player-select-row">{data.players.map(p => <button className={`select-player ${playerId === p.id ? 'selected' : ''}`} key={p.id} onClick={() => selectPlayer(p.id)}><i style={{ background: p.color }}/>{p.name}<small>{p.rank}</small></button>)}</div><div className="editor-title"><div className="player-avatar small" style={{ '--player-color': player.color }}>{player.avatar}</div><div><h2>{player.name}</h2><small>{player.rank} · cinco objetivos ativos</small></div></div><div className="objective-fields">{draft.map((goal, i) => <label className="objective-field" key={i}><span>{String(i + 1).padStart(2, '0')}</span><input value={goal} maxLength={140} onChange={e => changeGoal(i, e.target.value)} placeholder={`Objetivo ${i + 1}`}/><small>{goal.length}/140</small></label>)}</div><div className="editor-footer"><span>Ao substituir um objetivo, o histórico anterior será preservado.</span><button className="button primary" disabled={draft.length !== 5 || draft.some(goal => !goal.trim())} onClick={save}><Shield size={15}/> Salvar objetivos</button></div>{error && <div className="login-error">{error}</div>}{saved && <div className="save-confirmation">✓ Objetivos de {player.name} atualizados no servidor.</div>}</div><aside className="panel objective-history"><div className="eyebrow">HISTÓRICO</div><h2>Objetivos substituídos</h2><p>As avaliações já feitas continuam ligadas ao conjunto de objetivos usado naquele dia.</p>{history.length ? history.slice().reverse().map((item, i) => <div className="archived-goal" key={`${item.changedAt}-${i}`}><span>{item.status}</span><b>{item.description}</b><small>{new Date(item.changedAt).toLocaleDateString('pt-BR')}</small></div>) : <div className="empty-archive">Nenhum objetivo substituído ainda.</div>}<div className="admin-local-note"><Shield size={14}/> Somente uma sessão administrativa autenticada pode gravar alterações.</div></aside></div></section>;
 }
-function PlayerDetail({ player, data, playerStats, onBack, onEvaluate, onManage }) { const history = data.evaluations.filter(e => e.playerId === player.id).slice().reverse(); return <section className="page-wrap"><button className="back-link" onClick={onBack}>← Voltar para jogadores</button><PageHeading eyebrow="ANÁLISE INDIVIDUAL" title={player.name} subtitle={`${player.rank} · ${fmt(playerStats?.score || 0)} pontos acumulados`} action={<div className="heading-actions"><button className="button ghost" onClick={onManage}><SlidersHorizontal size={15}/> Gerenciar objetivos</button><button className="button primary" onClick={onEvaluate}><Plus size={16}/> Avaliar jogador</button></div>}/><div className="detail-grid"><div className="panel detail-objectives"><div className="eyebrow">FOCO ATUAL</div><h2>Objetivos individuais</h2>{(data.objectives[player.id] || []).map((o, i) => <div className="objective-row" key={i}><span>{String(i + 1).padStart(2, '0')}</span><b>{o}</b><Target size={15}/></div>)}</div><div className="panel detail-history"><div className="eyebrow">REGISTROS</div><h2>Histórico de avaliações</h2>{history.length ? history.map(e => <EvaluationHistoryRow key={e.id} evaluation={e} player={player}/>) : <div className="empty-state"><Sparkles size={20}/>Ainda não há avaliações para este jogador.</div>}</div></div></section>; }
+function PlayerDetail({ player, data, playerStats, onBack, onEvaluate, onManage }) { const history = data.evaluations.filter(e => e.playerId === player.id).slice().reverse(); return <section className="page-wrap"><button className="back-link" onClick={onBack}>← Voltar para jogadores</button><PageHeading eyebrow="ANÁLISE INDIVIDUAL" title={player.name} subtitle={`${player.rank} · ${fmt(playerStats?.score || 0)} pontos acumulados`} action={onManage && <div className="heading-actions"><button className="button ghost" onClick={onManage}><SlidersHorizontal size={15}/> Gerenciar objetivos</button><button className="button primary" onClick={onEvaluate}><Plus size={16}/> Avaliar jogador</button></div>}/><div className="detail-grid"><div className="panel detail-objectives"><div className="eyebrow">FOCO ATUAL</div><h2>Objetivos individuais</h2>{(data.objectives[player.id] || []).map((o, i) => <div className="objective-row" key={i}><span>{String(i + 1).padStart(2, '0')}</span><b>{o}</b><Target size={15}/></div>)}</div><div className="panel detail-history"><div className="eyebrow">REGISTROS</div><h2>Histórico de avaliações</h2>{history.length ? history.map(e => <EvaluationHistoryRow key={e.id} evaluation={e} player={player}/>) : <div className="empty-state"><Sparkles size={20}/>Ainda não há avaliações para este jogador.</div>}</div></div></section>; }
 function EvaluationModal({ data, form, setForm, onClose, onSave }) {
   const [step, setStep] = useState(0);
   const isSummary = step >= data.players.length;

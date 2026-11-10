@@ -10,8 +10,8 @@ import { INITIAL_DATA } from '../src/data.js';
 const app = express();
 const port = Number(process.env.PORT || process.env.API_PORT || 3001);
 const here = path.dirname(fileURLToPath(import.meta.url));
-const dataDir = process.env.DATA_DIR || path.join(here, 'data');
-const dataFile = path.join(dataDir, 'objectives.json');
+const dataFile = process.env.DATA_FILE || path.resolve(here, '../public/data/competition.json');
+const dataDir = path.dirname(dataFile);
 const frontendDir = path.resolve(here, '../dist');
 const adminPassword = process.env.ADMIN_PASSWORD;
 
